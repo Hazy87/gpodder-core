@@ -98,6 +98,14 @@ class EpisodeModelFields(minidb.Model):
     description_html = str
     episode_art_url = str
 
+    VALID_KEYS = frozenset((
+        'podcast_id', 'title', 'description', 'url', 'published', 'guid',
+        'link', 'file_size', 'mime_type', 'state', 'is_new', 'archive',
+        'download_filename', 'total_time', 'current_position',
+        'current_position_updated', 'last_playback', 'payment_url',
+        'chapters', 'subtitle', 'description_html', 'episode_art_url',
+    ))
+
 
 class PodcastModelFields(minidb.Model):
     title = str
@@ -154,7 +162,7 @@ class PodcastEpisode(EpisodeModelFields, PodcastModelMixin):
         last_playback = 0
         episode_art_url = ''
 
-    def __init__(self, channel):
+    def __init__(self, channel, **kwargs):
         self._parent = channel
         self._children = None
 
@@ -508,7 +516,7 @@ class PodcastChannel(PodcastModelFields, PodcastModelMixin):
         section = 'other'
         download_strategy = lambda o: o.STRATEGY_DEFAULT
 
-    def __init__(self, model):
+    def __init__(self, model, **kwargs):
         self._parent = model
         self._children = []
         self._common_prefix = None
@@ -689,7 +697,10 @@ class PodcastChannel(PodcastModelFields, PodcastModelMixin):
 
         Returns: A new PodcastEpisode object
         """
-        return self.EpisodeClass(self, **dict(iterable))
+        # Filter out unrecognized fields from podcastparser (e.g. itunes_author, number)
+        valid_keys = self.EpisodeClass.VALID_KEYS
+        filtered = {k: v for k, v in dict(iterable).items() if k in valid_keys}
+        return self.EpisodeClass(self, **filtered)
 
     def _consume_updated_title(self, new_title):
         # Replace multi-space and newlines with single space (Maemo bug 11173)
